@@ -1,9 +1,26 @@
-FROM python:latest
+# Базовый образ, загруженный в ПР №7 (замените тег на ваш точный, если он отличался)
+FROM python:3.12-slim
+
+# Создаем непривилегированного пользователя для безопасности
+RUN useradd -u 10001 -m appuser
 
 WORKDIR /app
 
-COPY . .
-RUN pip install -r requirements.txt
+# Оптимизируем кэширование слоев: сначала зависимости
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-EXPOSE 8000
-CMD gunicorn --bind 127.0.0.1:8000 app:app
+# Копируем остальной исходный код приложения
+COPY . .
+
+# Меняем владельца директории на созданного пользователя
+RUN chown -R appuser:appuser /app
+
+# Переключаемся на непривилегированного пользователя
+USER appuser
+
+# Приложение принимает соединения на порту варианта (8002)
+EXPOSE 8002
+
+# Исполняемая exec-форма JSON-массива (PID 1)
+CMD ["python", "app.py"]
